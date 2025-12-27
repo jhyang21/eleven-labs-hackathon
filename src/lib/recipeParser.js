@@ -43,7 +43,7 @@ export const parseRecipeFromUrl = async (url) => {
     throw new Error('Please provide a recipe URL.');
   }
 
-  const functionUrl = import.meta.env.VITE_PARSE_RECIPE_ENDPOINT;
+  const functionUrl = process.env.NEXT_PUBLIC_PARSE_RECIPE_ENDPOINT;
   if (functionUrl) {
     const response = await fetch(functionUrl, {
       method: 'POST',

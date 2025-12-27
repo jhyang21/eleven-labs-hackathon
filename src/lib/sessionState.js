@@ -65,12 +65,28 @@ export const getSessionState = async () => {
 };
 
 export const saveSessionState = async (session) => {
-  const firestore = initFirebase();
-  if (!firestore) {
+  try {
+    const response = await fetch('/api/updateSessionStep', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(session),
+    });
+    if (!response.ok) {
+      console.warn('Failed to save session state via API');
+    }
+  } catch (err) {
+    console.error('Error saving session state:', err);
+    // Fallback to local storage if API fails?
+    // original code had fallback if firestore wasn't initialized.
+    // We can keep localStorage as a backup or just rely on API.
+    // Given the prompt "Move all functions... logic to next.js app", relying on API is correct.
+    // But for offline capability or if API fails, maybe fallback?
+    // The original code fell back ONLY if firebase config was missing.
+    // If we assume API is always available in the app, we might not need fallback for config missing,
+    // but maybe for network errors.
+    // For now, I will stick to the plan which implies using the API.
     localStorage.setItem(FALLBACK_KEY, JSON.stringify(session));
-    return;
   }
-  await setDoc(doc(firestore, 'sessions', 'default'), session, { merge: true });
 };
 
 export const advanceToNextStep = (session, totalSteps) => {

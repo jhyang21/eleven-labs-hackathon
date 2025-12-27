@@ -1,6 +1,6 @@
 import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
 import { initializeApp } from 'firebase/app';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -78,8 +78,9 @@ const formatRemaining = (remainingMs) => {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
 
-export const useCookingTimers = (timers, setSession) => {
+export const useCookingTimers = (timers, setSession, onTimerExpired) => {
   const [displayTimers, setDisplayTimers] = useState([]);
+  const expiredTimersRef = useRef(new Set());
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -90,22 +91,35 @@ export const useCookingTimers = (timers, setSession) => {
           return {
             ...timer,
             remainingLabel: formatRemaining(remaining),
+            remainingMs: remaining,
             isExpired: remaining <= 0,
           };
         })
       );
 
-      const expiredTimers = timers.filter((timer) => timer.endTime <= now);
-      if (expiredTimers.length > 0) {
-        setSession((prev) => ({
-          ...prev,
-          activeTimers: prev.activeTimers.filter((timer) => timer.endTime > now),
-        }));
+      const newlyExpired = timers.filter(
+        (timer) => timer.endTime <= now && !expiredTimersRef.current.has(timer.id)
+      );
+      if (newlyExpired.length > 0) {
+        newlyExpired.forEach((timer) => {
+          expiredTimersRef.current.add(timer.id);
+          if (onTimerExpired) {
+            onTimerExpired(timer);
+          }
+        });
+        setTimeout(() => {
+          setSession((prev) => ({
+            ...prev,
+            activeTimers: prev.activeTimers.filter(
+              (timer) => !expiredTimersRef.current.has(timer.id)
+            ),
+          }));
+        }, 1000);
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [timers, setSession]);
+  }, [timers, setSession, onTimerExpired]);
 
   return displayTimers;
 };

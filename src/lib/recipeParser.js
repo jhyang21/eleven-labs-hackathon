@@ -43,7 +43,19 @@ export const parseRecipeFromUrl = async (url) => {
     throw new Error('Please provide a recipe URL.');
   }
 
-  const functionUrl = process.env.NEXT_PUBLIC_PARSE_RECIPE_ENDPOINT;
+  try {
+    const parsedUrl = new URL(url);
+    if (!parsedUrl.hostname.includes('allrecipes.com')) {
+      throw new Error('Only allrecipes.com URLs are supported.');
+    }
+  } catch (error) {
+    if (error.message.includes('Only allrecipes.com')) {
+      throw error;
+    }
+    throw new Error('Invalid URL provided.');
+  }
+
+  const functionUrl = '/api/parseRecipe';
   if (functionUrl) {
     const response = await fetch(functionUrl, {
       method: 'POST',

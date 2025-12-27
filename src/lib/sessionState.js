@@ -2,13 +2,39 @@ import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
 import { initializeApp } from 'firebase/app';
 import { useEffect, useRef, useState } from 'react';
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+const getFirebaseConfig = () => {
+  const fromIndividualVars = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  };
+
+  if (fromIndividualVars.projectId) {
+    return fromIndividualVars;
+  }
+
+  const rawWebappConfig =
+    process.env.NEXT_PUBLIC_FIREBASE_WEBAPP_CONFIG || process.env.FIREBASE_WEBAPP_CONFIG;
+  if (!rawWebappConfig) {
+    return fromIndividualVars;
+  }
+
+  try {
+    const parsed = JSON.parse(rawWebappConfig);
+    return {
+      apiKey: parsed.apiKey,
+      authDomain: parsed.authDomain,
+      projectId: parsed.projectId,
+      storageBucket: parsed.storageBucket,
+      messagingSenderId: parsed.messagingSenderId,
+      appId: parsed.appId,
+    };
+  } catch {
+    return fromIndividualVars;
+  }
 };
 
 let app;
@@ -17,6 +43,7 @@ let db;
 const FALLBACK_KEY = 'voice-cooking-session';
 
 const initFirebase = () => {
+  const firebaseConfig = getFirebaseConfig();
   if (!firebaseConfig.projectId) {
     return null;
   }

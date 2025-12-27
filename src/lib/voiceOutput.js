@@ -1,8 +1,9 @@
 const ELEVENLABS_API_URL = 'https://api.elevenlabs.io/v1/text-to-speech';
 
 export const speakWithElevenLabs = async (text) => {
-  const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
-  const voiceId = import.meta.env.VITE_ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM';
+  const apiKey = process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY;
+  const voiceId =
+    process.env.NEXT_PUBLIC_ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM';
 
   if (!apiKey) {
     if ('speechSynthesis' in window) {

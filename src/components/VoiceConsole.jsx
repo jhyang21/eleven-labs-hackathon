@@ -1,25 +1,18 @@
-export default function VoiceConsole({ isListening, transcript, onStart, onStop }) {
+export default function VoiceConsole({ voiceState, transcript, isVoiceSupported, onRetry }) {
   return (
     <div className="voice-console">
-      <h3>Voice assistant</h3>
-      <p className="muted">
-        Speak naturally. The assistant listens for confirmations, next step, repeats, and timers.
-      </p>
-      <div className="voice-controls">
-        <button type="button" onClick={onStart} disabled={isListening}>
-          Start listening
-        </button>
-        <button type="button" onClick={onStop} disabled={!isListening}>
-          Stop listening
-        </button>
-        <span className={isListening ? 'listening' : 'idle'}>
-          {isListening ? 'Listening…' : 'Idle'}
-        </span>
+      {transcript && <p className="voice-transcript">{transcript}</p>}
+      <div className={`voice-orb ${voiceState}`}>
+        {voiceState === 'disabled' && <span className="mic-icon">🎙️</span>}
       </div>
-      <div className="transcript">
-        <p className="muted">Latest transcript</p>
-        <p>{transcript || 'Say a command to see it here.'}</p>
-      </div>
+      {!isVoiceSupported && (
+        <div className="voice-error">
+          <p className="voice-error-title">We can’t hear you right now</p>
+          <button type="button" onClick={onRetry}>
+            Retry
+          </button>
+        </div>
+      )}
     </div>
   );
 }

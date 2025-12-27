@@ -10,8 +10,7 @@ import {
 import { parseRecipeFromUrl } from './lib/recipeParser.js';
 import { useSpeechInput } from './lib/voiceInput.js';
 import { speakWithElevenLabs } from './lib/voiceOutput.js';
-import Header from './components/Header.jsx';
-import RecipeOverview from './components/RecipeOverview.jsx';
+import IngredientsPanel from './components/IngredientsPanel.jsx';
 import StepCard from './components/StepCard.jsx';
 import TimerPanel from './components/TimerPanel.jsx';
 import VoiceConsole from './components/VoiceConsole.jsx';
@@ -32,12 +31,24 @@ export default function App() {
   });
   const [status, setStatus] = useState('Idle');
   const [error, setError] = useState('');
-  const timers = useCookingTimers(session.activeTimers, setSession);
+  const [isParsing, setIsParsing] = useState(false);
+  const [readyPromptVisible, setReadyPromptVisible] = useState(false);
+  const [voiceState, setVoiceState] = useState('idle');
+  const [isVoiceSupported, setIsVoiceSupported] = useState(true);
+  const [isIngredientsOpen, setIsIngredientsOpen] = useState(false);
+  const [flashingTimerId, setFlashingTimerId] = useState(null);
 
   const currentStep = useMemo(
     () => recipe.steps[session.currentStepIndex],
     [recipe.steps, session.currentStepIndex]
   );
+
+  const timers = useCookingTimers(session.activeTimers, setSession, async (timer) => {
+    playTimerChime();
+    setFlashingTimerId(timer.id);
+    setTimeout(() => setFlashingTimerId(null), 400);
+    await speakWithElevenLabs('Timer finished. Ready for your next instruction.');
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -56,9 +67,19 @@ export default function App() {
     saveSessionState(session);
   }, [session]);
 
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    setIsVoiceSupported(Boolean(SpeechRecognition));
+  }, []);
+
+  useEffect(() => {
+    setReadyPromptVisible(false);
+  }, [session.currentStepIndex]);
+
   const handleParseRecipe = async () => {
     setError('');
     setStatus('Parsing recipe...');
+    setIsParsing(true);
     try {
       const parsed = await parseRecipeFromUrl(recipeUrl);
       setRecipe(parsed);
@@ -69,11 +90,13 @@ export default function App() {
       }));
       setStatus('Ready to cook');
       if (parsed.steps.length > 0) {
-        await speakWithElevenLabs(`Great. Let's start with preparation: ${parsed.steps[0]}`);
+        await triggerSpeech(`Great. Let's start with preparation: ${parsed.steps[0]}`);
       }
     } catch (parseError) {
       setError(parseError.message);
       setStatus('Idle');
+    } finally {
+      setIsParsing(false);
     }
   };
 
@@ -82,14 +105,16 @@ export default function App() {
     setSession((prev) => advanceToNextStep(prev, recipe.steps.length));
     const nextStep = recipe.steps[session.currentStepIndex + 1];
     if (nextStep) {
-      await speakWithElevenLabs(`Next step: ${nextStep}`);
+      await triggerSpeech(`Next step: ${nextStep}`);
     }
+    setReadyPromptVisible(false);
   };
 
   const handleRepeatStep = async () => {
     if (!currentStep) return;
     setSession((prev) => repeatCurrentStep(prev));
-    await speakWithElevenLabs(`Repeating: ${currentStep}`);
+    await triggerSpeech(`Repeating: ${currentStep}`);
+    setReadyPromptVisible(false);
   };
 
   const handleSetTimer = async (durationSeconds) => {
@@ -98,12 +123,13 @@ export default function App() {
       ...prev,
       activeTimers: [...prev.activeTimers, newTimer],
     }));
-    await speakWithElevenLabs(`Timer set for ${Math.round(durationSeconds / 60)} minutes.`);
+    await triggerSpeech(`Timer set for ${Math.round(durationSeconds / 60)} minutes.`);
   };
 
-  const { isListening, transcript, startListening, stopListening } = useSpeechInput({
+  const { isListening, transcript, startListening } = useSpeechInput({
     onFinalTranscript: async (text) => {
       if (!text) return;
+      setReadyPromptVisible(false);
       if (text.match(/next step|what's next|done|i've done that/i)) {
         await handleAdvanceStep();
         return;
@@ -122,52 +148,127 @@ export default function App() {
           return;
         }
       }
-      await speakWithElevenLabs(
+      setVoiceState('thinking');
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      await triggerSpeech(
         `I heard: ${text}. You can say "next step", "repeat", or "set a timer for 5 minutes".`
       );
+      setReadyPromptVisible(true);
     },
   });
 
+  useEffect(() => {
+    if (!recipe.steps.length) return;
+    if (!isVoiceSupported) return;
+    if (!isListening) {
+      startListening();
+    }
+  }, [isListening, isVoiceSupported, recipe.steps.length, startListening]);
+
+  const handleRetryVoice = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    setIsVoiceSupported(Boolean(SpeechRecognition));
+    if (SpeechRecognition) {
+      startListening();
+    }
+  };
+
+  const handleResetError = () => {
+    setError('');
+    setStatus('Idle');
+  };
+
+  const triggerSpeech = async (text) => {
+    setVoiceState('speaking');
+    try {
+      await speakWithElevenLabs(text);
+    } finally {
+      setVoiceState('idle');
+    }
+  };
+
+  const playTimerChime = () => {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const context = new AudioContextClass();
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.value = 880;
+    gainNode.gain.value = 0.05;
+    oscillator.connect(gainNode);
+    gainNode.connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + 0.25);
+  };
+
+  const hasRecipe = recipe.steps.length > 0;
+  const phaseLabel = getPhaseLabel(session.currentStepIndex, recipe.steps.length);
+  const effectiveVoiceState = !isVoiceSupported
+    ? 'disabled'
+    : isListening
+      ? 'listening'
+      : voiceState;
+
   return (
     <div className="app">
-      <Header status={status} />
-      <main className="main">
-        <section className="panel">
-          <h2>Recipe intake</h2>
-          <p>Paste a recipe URL to begin. We will parse ingredients and steps deterministically.</p>
-          <div className="recipe-input">
+      {error ? (
+        <main className="error-screen">
+          <div className="error-card">
+            <h1>We couldn’t read this recipe</h1>
+            <p>Try another link or a different site</p>
+            <button type="button" onClick={handleResetError}>
+              Try again
+            </button>
+          </div>
+        </main>
+      ) : !hasRecipe ? (
+        <main className="landing">
+          <div className="landing-card">
             <input
               type="url"
-              placeholder="https://example.com/recipe"
+              placeholder="Paste a recipe link"
               value={recipeUrl}
               onChange={(event) => setRecipeUrl(event.target.value)}
             />
-            <button type="button" onClick={handleParseRecipe}>
-              Parse recipe
+            <button type="button" onClick={handleParseRecipe} disabled={!recipeUrl || isParsing}>
+              {isParsing ? <span className="spinner" aria-hidden="true" /> : 'Start cooking'}
             </button>
+            {isParsing && <p className="hint">Preparing your cooking session…</p>}
           </div>
-          {error && <p className="error">{error}</p>}
-          <RecipeOverview recipe={recipe} />
-        </section>
-        <section className="panel">
-          <StepCard
-            step={currentStep}
-            stepIndex={session.currentStepIndex}
-            totalSteps={recipe.steps.length}
-            onNext={handleAdvanceStep}
-            onRepeat={handleRepeatStep}
-          />
-          <TimerPanel timers={timers} />
-        </section>
-        <section className="panel">
+        </main>
+      ) : (
+        <main className="cooking">
+          <div className="content">
+            <StepCard
+              key={session.currentStepIndex}
+              phaseLabel={phaseLabel}
+              step={currentStep}
+              readyPromptVisible={readyPromptVisible}
+            />
+            <TimerPanel timers={timers} flashingTimerId={flashingTimerId} />
+          </div>
           <VoiceConsole
-            isListening={isListening}
+            voiceState={effectiveVoiceState}
             transcript={transcript}
-            onStart={startListening}
-            onStop={stopListening}
+            isVoiceSupported={isVoiceSupported}
+            onRetry={handleRetryVoice}
           />
-        </section>
-      </main>
+          <IngredientsPanel
+            isOpen={isIngredientsOpen}
+            onToggle={() => setIsIngredientsOpen((open) => !open)}
+            ingredients={recipe.ingredients}
+          />
+        </main>
+      )}
     </div>
   );
 }
+
+const getPhaseLabel = (currentIndex, totalSteps) => {
+  if (!totalSteps) return 'Preparation';
+  const progress = (currentIndex + 1) / totalSteps;
+  if (progress <= 0.34) return 'Preparation';
+  if (progress <= 0.75) return 'Cooking';
+  return 'Finishing';
+};

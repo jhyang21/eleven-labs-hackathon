@@ -1,25 +1,14 @@
-export default function StepCard({ step, stepIndex, totalSteps, onNext, onRepeat }) {
+export default function StepCard({ step, phaseLabel, readyPromptVisible }) {
   return (
     <div className="step-card">
-      <h2>Current step</h2>
+      <p className="phase-label">{phaseLabel}</p>
+      <p className="step-label">CURRENT STEP</p>
       {step ? (
-        <>
-          <p className="step-index">
-            Step {stepIndex + 1} of {totalSteps}
-          </p>
-          <p className="step-text">{step}</p>
-        </>
+        <p className="step-text">{step}</p>
       ) : (
-        <p className="muted">Parse a recipe to start cooking.</p>
+        <p className="muted">Paste a recipe to start cooking.</p>
       )}
-      <div className="step-actions">
-        <button type="button" onClick={onRepeat} disabled={!step}>
-          Repeat step
-        </button>
-        <button type="button" onClick={onNext} disabled={!step}>
-          Next step
-        </button>
-      </div>
+      {readyPromptVisible && <p className="ready-prompt">Ready when you are.</p>}
     </div>
   );
 }

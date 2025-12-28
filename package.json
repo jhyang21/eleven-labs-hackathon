@@ -2,9 +2,7 @@
   "name": "voice-ai-cooking-assistant",
   "private": true,
   "version": "0.1.0",
-  "engines": {
-    "node": "22.x"
-  },
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -12,6 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
     "cheerio": "^1.1.2",
     "firebase": "^10.12.2",
     "firebase-admin": "^13.6.0",

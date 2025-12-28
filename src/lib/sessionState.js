@@ -1,91 +1,16 @@
-import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
-import { initializeApp } from 'firebase/app';
 import { useEffect, useRef, useState } from 'react';
 
-const getFirebaseConfig = () => {
-  const fromIndividualVars = {
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  };
-
-  if (fromIndividualVars.projectId) {
-    return fromIndividualVars;
-  }
-
-  const rawWebappConfig =
-    process.env.NEXT_PUBLIC_FIREBASE_WEBAPP_CONFIG || process.env.FIREBASE_WEBAPP_CONFIG;
-  if (!rawWebappConfig) {
-    return fromIndividualVars;
-  }
-
-  try {
-    const parsed = JSON.parse(rawWebappConfig);
-    return {
-      apiKey: parsed.apiKey,
-      authDomain: parsed.authDomain,
-      projectId: parsed.projectId,
-      storageBucket: parsed.storageBucket,
-      messagingSenderId: parsed.messagingSenderId,
-      appId: parsed.appId,
-    };
-  } catch {
-    return fromIndividualVars;
-  }
-};
-
-let app;
-let db;
-
-const FALLBACK_KEY = 'voice-cooking-session';
-
-const initFirebase = () => {
-  const firebaseConfig = getFirebaseConfig();
-  if (!firebaseConfig.projectId) {
-    return null;
-  }
-  if (!app) {
-    app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-  }
-  return db;
-};
+const STORAGE_KEY = 'voice-cooking-session';
 
 export const getSessionState = async () => {
-  const firestore = initFirebase();
-  if (!firestore) {
-    const stored = localStorage.getItem(FALLBACK_KEY);
-    return stored ? JSON.parse(stored) : null;
-  }
-  const snapshot = await getDoc(doc(firestore, 'sessions', 'default'));
-  return snapshot.exists() ? snapshot.data() : null;
+  if (typeof window === 'undefined') return null;
+  const stored = localStorage.getItem(STORAGE_KEY);
+  return stored ? JSON.parse(stored) : null;
 };
 
 export const saveSessionState = async (session) => {
-  try {
-    const response = await fetch('/api/updateSessionStep', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(session),
-    });
-    if (!response.ok) {
-      console.warn('Failed to save session state via API');
-    }
-  } catch (err) {
-    console.error('Error saving session state:', err);
-    // Fallback to local storage if API fails?
-    // original code had fallback if firestore wasn't initialized.
-    // We can keep localStorage as a backup or just rely on API.
-    // Given the prompt "Move all functions... logic to next.js app", relying on API is correct.
-    // But for offline capability or if API fails, maybe fallback?
-    // The original code fell back ONLY if firebase config was missing.
-    // If we assume API is always available in the app, we might not need fallback for config missing,
-    // but maybe for network errors.
-    // For now, I will stick to the plan which implies using the API.
-    localStorage.setItem(FALLBACK_KEY, JSON.stringify(session));
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   }
 };
 

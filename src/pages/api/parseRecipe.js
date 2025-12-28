@@ -36,16 +36,16 @@ export default async function handler(req, res) {
     const html = await fetched.text();
     const $ = cheerio.load(html);
 
-    const title = normalizeText($('#article-heading_2-0').text()) || 'Parsed recipe';
+    const title = normalizeText($('#article-heading').text()) || 'Parsed recipe';
 
     const ingredients = [];
-    $('#mntl-structured-ingredients_1-0 li').each((_, el) => {
+    $('#mm-recipes-structured-ingredients_1-0 li').each((_, el) => {
       const text = normalizeText($(el).text());
       if (text) ingredients.push(text);
     });
 
     const steps = [];
-    $('#recipe__steps_1-0 li').each((_, el) => {
+    $('#mm-recipes-steps_1-0 li').each((_, el) => {
       const text = normalizeText($(el).text());
       if (text) steps.push(text);
     });

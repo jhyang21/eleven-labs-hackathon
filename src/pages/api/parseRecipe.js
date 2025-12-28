@@ -53,8 +53,6 @@ export default async function handler(req, res) {
     // Try multiple selectors for ingredients
     const ingredientSelectors = [
       '#mm-recipes-structured-ingredients_1-0 li',
-      '.mm-recipes-structured-ingredients__list-item',
-      '.ingredients-item'
     ];
     
     for (const selector of ingredientSelectors) {
@@ -70,8 +68,6 @@ export default async function handler(req, res) {
     // Try multiple selectors for steps
     const stepSelectors = [
       '#mm-recipes-steps_1-0 li', 
-      '.mm-recipes-steps__content',
-      '.instructions-section-item'
     ];
 
     for (const selector of stepSelectors) {

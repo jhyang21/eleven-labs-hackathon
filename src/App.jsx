@@ -28,6 +28,7 @@ export default function App() {
     currentStepIndex: 0,
     activeTimers: [],
     lastConfirmedStep: null,
+    recipe: null,
   });
   const [status, setStatus] = useState('Idle');
   const [error, setError] = useState('');
@@ -56,6 +57,10 @@ export default function App() {
       if (!isMounted) return;
       if (savedSession) {
         setSession((prev) => ({ ...prev, ...savedSession }));
+        // Restore recipe from session state if available
+        if (savedSession.recipe) {
+          setRecipe(savedSession.recipe);
+        }
       }
     });
     return () => {
@@ -87,6 +92,11 @@ export default function App() {
         ...prev,
         currentStepIndex: 0,
         lastConfirmedStep: null,
+        recipe: {
+          title: parsed.title,
+          ingredients: parsed.ingredients,
+          steps: parsed.steps,
+        },
       }));
       setStatus('Ready to cook');
       if (parsed.steps.length > 0) {

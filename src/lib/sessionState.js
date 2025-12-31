@@ -3,15 +3,11 @@ import { useEffect, useRef, useState } from 'react';
 const STORAGE_KEY = 'voice-cooking-session';
 
 export const getSessionState = async () => {
-  if (typeof window === 'undefined') return null;
-  const stored = localStorage.getItem(STORAGE_KEY);
-  return stored ? JSON.parse(stored) : null;
+  return null;
 };
 
 export const saveSessionState = async (session) => {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-  }
+  // Session persistence disabled
 };
 
 export const advanceToNextStep = (session, totalSteps) => {
@@ -23,18 +19,27 @@ export const advanceToNextStep = (session, totalSteps) => {
   };
 };
 
+export const goBackToPreviousStep = (session) => {
+  const prevIndex = Math.max(session.currentStepIndex - 1, 0);
+  return {
+    ...session,
+    currentStepIndex: prevIndex,
+    lastConfirmedStep: prevIndex,
+  };
+};
+
 export const repeatCurrentStep = (session) => ({
   ...session,
   lastConfirmedStep: session.currentStepIndex,
 });
 
-export const createTimer = (durationSeconds) => {
+export const createTimer = (durationSeconds, label) => {
   const endTime = Date.now() + durationSeconds * 1000;
   return {
     id: crypto.randomUUID(),
     durationSeconds,
     endTime,
-    label: `Timer (${Math.round(durationSeconds / 60)} min)`,
+    label: label || `Timer (${Math.round(durationSeconds / 60)} min)`,
   };
 };
 

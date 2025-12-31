@@ -1,8 +1,20 @@
 const normalizeText = (text) => text.replace(/\s+/g, ' ').trim();
 
+const cleanAndNormalizeText = (node) => {
+  let text = normalizeText(node.textContent);
+  
+  // Cut off text at the first occurrence of "<"
+  const cutIndex = text.indexOf('<');
+  if (cutIndex !== -1) {
+    text = text.substring(0, cutIndex).trim();
+  }
+  
+  return text;
+};
+
 const extractListItems = (container) =>
   Array.from(container.querySelectorAll('li'))
-    .map((item) => normalizeText(item.textContent))
+    .map((item) => cleanAndNormalizeText(item))
     .filter(Boolean);
 
 const deriveSteps = (document) => {
@@ -16,7 +28,7 @@ const deriveSteps = (document) => {
   for (const selector of stepSelectors) {
     const nodes = Array.from(document.querySelectorAll(selector));
     if (nodes.length > 1) {
-      return nodes.map((node) => normalizeText(node.textContent)).filter(Boolean);
+      return nodes.map((node) => cleanAndNormalizeText(node)).filter(Boolean);
     }
   }
   return [];
@@ -32,7 +44,7 @@ const deriveIngredients = (document) => {
   for (const selector of ingredientSelectors) {
     const nodes = Array.from(document.querySelectorAll(selector));
     if (nodes.length > 1) {
-      return nodes.map((node) => normalizeText(node.textContent)).filter(Boolean);
+      return nodes.map((node) => cleanAndNormalizeText(node)).filter(Boolean);
     }
   }
   return [];
@@ -45,7 +57,7 @@ export const parseRecipeFromUrl = async (url) => {
 
   try {
     const parsedUrl = new URL(url);
-    if (!parsedUrl.hostname.includes('allrecipes.com')) {
+    if (!parsedUrl.hostname.endsWith('allrecipes.com')) {
       throw new Error('Only allrecipes.com URLs are supported.');
     }
   } catch (error) {

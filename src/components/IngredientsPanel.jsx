@@ -9,37 +9,34 @@ const splitIngredient = (item) => {
   };
 };
 
-export default function IngredientsPanel({ ingredients, isOpen, onToggle }) {
+export default function IngredientsPanel({ ingredients }) {
   return (
-    <div className={`ingredients-panel ${isOpen ? 'open' : ''}`}>
-      <button type="button" className="ingredients-toggle" onClick={onToggle}>
+    <div className="ingredients-panel">
+      <div className="ingredients-header">
         Ingredients
-        <span className="ingredients-caret">{isOpen ? '–' : '+'}</span>
-      </button>
-      {isOpen && (
-        <div className="ingredients-content">
-          {ingredients.length === 0 ? (
-            <p className="muted">Ingredients will appear after parsing.</p>
-          ) : (
-            <ul>
-              {ingredients.map((item) => {
-                const parsed = splitIngredient(item);
-                return (
-                  <li key={item}>
-                    <label>
-                      <input type="checkbox" />
-                      <span className="ingredient-name">{parsed.name}</span>
-                      {parsed.quantity && (
-                        <span className="ingredient-quantity">{parsed.quantity}</span>
-                      )}
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-      )}
+      </div>
+      <div className="ingredients-content">
+        {ingredients.length === 0 ? (
+          <p className="muted">Ingredients will appear after parsing.</p>
+        ) : (
+          <ul>
+            {ingredients.map((item) => {
+              const parsed = splitIngredient(item);
+              return (
+                <li key={item}>
+                  <label>
+                    <input type="checkbox" />
+                    <span className="ingredient-name">{parsed.name}</span>
+                    {parsed.quantity && (
+                      <span className="ingredient-quantity">{parsed.quantity}</span>
+                    )}
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

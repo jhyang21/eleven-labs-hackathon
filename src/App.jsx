@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import {
   advanceToNextStep,
   createTimer,
   getSessionState,
+  goBackToPreviousStep,
   repeatCurrentStep,
   saveSessionState,
   useCookingTimers,
 } from './lib/sessionState.js';
 import { parseRecipeFromUrl } from './lib/recipeParser.js';
-import { useSpeechInput } from './lib/voiceInput.js';
-import { speakWithElevenLabs } from './lib/voiceOutput.js';
+import { useConversation } from '@elevenlabs/react';
 import IngredientsPanel from './components/IngredientsPanel.jsx';
 import StepCard from './components/StepCard.jsx';
 import TimerPanel from './components/TimerPanel.jsx';
@@ -21,22 +21,113 @@ const defaultRecipe = {
   steps: [],
 };
 
+// Personality/Agent configurations
+const PERSONALITIES = [
+  { 
+    id: process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID_GRANDMA, 
+    name: 'Grandma', 
+    description: 'Sweet and encouraging, like cooking with grandma' 
+  },
+  { 
+    id: process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID_CHEF, 
+    name: 'Professional Chef', 
+    description: 'Strict and precise culinary expert' 
+  },
+  { 
+    id: process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID_YOGA, 
+    name: 'Yoga Instructor', 
+    description: 'Mindful and zen cooking experience' 
+  },
+  { 
+    id: process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID_SCIENTIST, 
+    name: 'Scientist', 
+    description: 'Analytical and detail-oriented approach' 
+  },
+].filter(p => p.id); // Only show personalities with configured IDs
+
 export default function App() {
   const [recipeUrl, setRecipeUrl] = useState('');
   const [recipe, setRecipe] = useState(defaultRecipe);
+  const [selectedAgentId, setSelectedAgentId] = useState(PERSONALITIES[0]?.id || '');
   const [session, setSession] = useState({
     currentStepIndex: 0,
     activeTimers: [],
     lastConfirmedStep: null,
+    recipe: null,
   });
   const [status, setStatus] = useState('Idle');
   const [error, setError] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [readyPromptVisible, setReadyPromptVisible] = useState(false);
-  const [voiceState, setVoiceState] = useState('idle');
-  const [isVoiceSupported, setIsVoiceSupported] = useState(true);
-  const [isIngredientsOpen, setIsIngredientsOpen] = useState(false);
   const [flashingTimerId, setFlashingTimerId] = useState(null);
+  const [isMuted, setIsMuted] = useState(false);
+  
+  const sessionRef = useRef(session);
+  const recipeRef = useRef(recipe);
+
+  useEffect(() => {
+    sessionRef.current = session;
+    recipeRef.current = recipe;
+  }, [session, recipe]);
+
+  const conversation = useConversation({
+    micMuted: isMuted,
+    clientTools: {
+      startCookingSession: async () => {
+        const r = recipeRef.current;
+        if (!r.steps.length) return 'No recipe loaded.';
+
+        setSession((prev) => ({
+          ...prev,
+          currentStepIndex: 0,
+          lastConfirmedStep: 0,
+        }));
+
+        return r.steps[0];
+      },
+      advanceToNextStep: async () => {
+        const s = sessionRef.current;
+        const r = recipeRef.current;
+        if (!r.steps.length) return 'No recipe loaded.';
+        
+        const nextSession = advanceToNextStep(s, r.steps.length);
+        setSession(prev => ({ ...prev, ...nextSession }));
+        
+        const stepText = r.steps[nextSession.currentStepIndex];
+        return stepText || 'You have finished the recipe.';
+      },
+      getCurrentStep: async () => {
+        const s = sessionRef.current;
+        const r = recipeRef.current;
+        if (!r.steps.length) return 'No recipe loaded.';
+        
+        const stepText = r.steps[s.currentStepIndex];
+        return stepText || 'No current step.';
+      },
+      goBackToPreviousStep: async () => {
+        const s = sessionRef.current;
+        const r = recipeRef.current;
+        if (!r.steps.length) return 'No recipe loaded.';
+        
+        const nextSession = goBackToPreviousStep(s);
+        setSession(prev => ({ ...prev, ...nextSession }));
+        
+        const stepText = r.steps[nextSession.currentStepIndex];
+        return stepText || 'No current step.';
+      },
+      startTimer: async ({ durationSeconds, label }) => {
+        const newTimer = createTimer(durationSeconds, label);
+        setSession((prev) => ({
+          ...prev,
+          activeTimers: [...prev.activeTimers, newTimer],
+        }));
+        return `Timer started for ${Math.round(durationSeconds / 60)} minutes.`;
+      },
+    },
+  });
+
+  const { status: conversationStatus, isSpeaking } = conversation;
+
 
   const currentStep = useMemo(
     () => recipe.steps[session.currentStepIndex],
@@ -47,7 +138,9 @@ export default function App() {
     playTimerChime();
     setFlashingTimerId(timer.id);
     setTimeout(() => setFlashingTimerId(null), 400);
-    await speakWithElevenLabs('Timer finished. Ready for your next instruction.');
+    if (conversation.status === 'connected') {
+      await conversation.sendUserMessage(`The timer for ${Math.round(timer.durationSeconds / 60)} minutes has finished.`);
+    }
   });
 
   useEffect(() => {
@@ -56,6 +149,10 @@ export default function App() {
       if (!isMounted) return;
       if (savedSession) {
         setSession((prev) => ({ ...prev, ...savedSession }));
+        // Restore recipe from session state if available
+        if (savedSession.recipe) {
+          setRecipe(savedSession.recipe);
+        }
       }
     });
     return () => {
@@ -67,14 +164,10 @@ export default function App() {
     saveSessionState(session);
   }, [session]);
 
-  useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    setIsVoiceSupported(Boolean(SpeechRecognition));
-  }, []);
 
-  useEffect(() => {
-    setReadyPromptVisible(false);
-  }, [session.currentStepIndex]);
+  const handleAgentChange = (agentId) => {
+    setSelectedAgentId(agentId);
+  };
 
   const handleParseRecipe = async () => {
     setError('');
@@ -87,10 +180,21 @@ export default function App() {
         ...prev,
         currentStepIndex: 0,
         lastConfirmedStep: null,
+        recipe: {
+          title: parsed.title,
+          ingredients: parsed.ingredients,
+          steps: parsed.steps,
+        },
       }));
       setStatus('Ready to cook');
       if (parsed.steps.length > 0) {
-        await triggerSpeech(`Great. Let's start with preparation: ${parsed.steps[0]}`);
+        try {
+          await conversation.startSession({
+            agentId: selectedAgentId,
+          });
+        } catch (sessionError) {
+          console.error('Failed to start conversation session:', sessionError);
+        }
       }
     } catch (parseError) {
       setError(parseError.message);
@@ -103,17 +207,12 @@ export default function App() {
   const handleAdvanceStep = async () => {
     if (!recipe.steps.length) return;
     setSession((prev) => advanceToNextStep(prev, recipe.steps.length));
-    const nextStep = recipe.steps[session.currentStepIndex + 1];
-    if (nextStep) {
-      await triggerSpeech(`Next step: ${nextStep}`);
-    }
     setReadyPromptVisible(false);
   };
 
   const handleRepeatStep = async () => {
     if (!currentStep) return;
     setSession((prev) => repeatCurrentStep(prev));
-    await triggerSpeech(`Repeating: ${currentStep}`);
     setReadyPromptVisible(false);
   };
 
@@ -123,54 +222,6 @@ export default function App() {
       ...prev,
       activeTimers: [...prev.activeTimers, newTimer],
     }));
-    await triggerSpeech(`Timer set for ${Math.round(durationSeconds / 60)} minutes.`);
-  };
-
-  const { isListening, transcript, startListening } = useSpeechInput({
-    onFinalTranscript: async (text) => {
-      if (!text) return;
-      setReadyPromptVisible(false);
-      if (text.match(/next step|what's next|done|i've done that/i)) {
-        await handleAdvanceStep();
-        return;
-      }
-      if (text.match(/repeat/i)) {
-        await handleRepeatStep();
-        return;
-      }
-      if (text.match(/set a timer for/i)) {
-        const match = text.match(/timer for (\d+) (minutes|minute|seconds|second)/i);
-        if (match) {
-          const amount = Number(match[1]);
-          const unit = match[2].toLowerCase();
-          const seconds = unit.startsWith('minute') ? amount * 60 : amount;
-          await handleSetTimer(seconds);
-          return;
-        }
-      }
-      setVoiceState('thinking');
-      await new Promise((resolve) => setTimeout(resolve, 150));
-      await triggerSpeech(
-        `I heard: ${text}. You can say "next step", "repeat", or "set a timer for 5 minutes".`
-      );
-      setReadyPromptVisible(true);
-    },
-  });
-
-  useEffect(() => {
-    if (!recipe.steps.length) return;
-    if (!isVoiceSupported) return;
-    if (!isListening) {
-      startListening();
-    }
-  }, [isListening, isVoiceSupported, recipe.steps.length, startListening]);
-
-  const handleRetryVoice = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    setIsVoiceSupported(Boolean(SpeechRecognition));
-    if (SpeechRecognition) {
-      startListening();
-    }
   };
 
   const handleResetError = () => {
@@ -178,14 +229,10 @@ export default function App() {
     setStatus('Idle');
   };
 
-  const triggerSpeech = async (text) => {
-    setVoiceState('speaking');
-    try {
-      await speakWithElevenLabs(text);
-    } finally {
-      setVoiceState('idle');
-    }
-  };
+
+  useEffect(() => {
+    setReadyPromptVisible(false);
+  }, [session.currentStepIndex]);
 
   const playTimerChime = () => {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -204,11 +251,14 @@ export default function App() {
 
   const hasRecipe = recipe.steps.length > 0;
   const phaseLabel = getPhaseLabel(session.currentStepIndex, recipe.steps.length);
-  const effectiveVoiceState = !isVoiceSupported
-    ? 'disabled'
-    : isListening
-      ? 'listening'
-      : voiceState;
+  const effectiveVoiceState =
+    conversationStatus === 'connected'
+      ? isSpeaking
+        ? 'speaking'
+        : 'listening'
+      : conversationStatus === 'connecting'
+      ? 'thinking'
+      : 'idle';
 
   return (
     <div className="app">
@@ -216,7 +266,7 @@ export default function App() {
         <main className="error-screen">
           <div className="error-card">
             <h1>We couldn’t read this recipe</h1>
-            <p>Try another link or a different site</p>
+            <p>Please use a valid AllRecipes.com URL</p>
             <button type="button" onClick={handleResetError}>
               Try again
             </button>
@@ -224,22 +274,65 @@ export default function App() {
         </main>
       ) : !hasRecipe ? (
         <main className="landing">
-          <div className="landing-card">
-            <input
-              type="url"
-              placeholder="Paste a recipe link"
-              value={recipeUrl}
-              onChange={(event) => setRecipeUrl(event.target.value)}
-            />
-            <button type="button" onClick={handleParseRecipe} disabled={!recipeUrl || isParsing}>
-              {isParsing ? <span className="spinner" aria-hidden="true" /> : 'Start cooking'}
-            </button>
-            {isParsing && <p className="hint">Preparing your cooking session…</p>}
+          <div className="landing-container">
+            <div className="landing-content">
+              <div className="landing-hero">
+                <h1 className="landing-title">Voice AI Cooking Assistant</h1>
+                <p className="landing-subtitle">Hands-free recipe guidance powered by ElevenLabs</p>
+              </div>
+              <div className="landing-card">
+                <div className="landing-card-header">
+                  <h2 className="landing-card-title">Get Started</h2>
+                  <p className="landing-card-subtitle">Enter your recipe URL to begin</p>
+                </div>
+                <div className="landing-input-group">
+                  <div className="personality-selector-group">
+                    <label htmlFor="personality-select" className="personality-label">Choose Personality</label>
+                    <select
+                      id="personality-select"
+                      className="personality-select"
+                      value={selectedAgentId}
+                      onChange={(e) => handleAgentChange(e.target.value)}
+                      disabled={isParsing}
+                    >
+                      {PERSONALITIES.map((personality) => (
+                        <option key={personality.id} value={personality.id}>
+                          {personality.name}
+                        </option>
+                      ))}
+                    </select>
+                    {PERSONALITIES.find(p => p.id === selectedAgentId)?.description && (
+                      <p className="personality-description">
+                        {PERSONALITIES.find(p => p.id === selectedAgentId).description}
+                      </p>
+                    )}
+                  </div>
+                  <input
+                    type="url"
+                    placeholder="https://www.allrecipes.com/recipe/..."
+                    value={recipeUrl}
+                    onChange={(event) => setRecipeUrl(event.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && recipeUrl && !isParsing) {
+                        handleParseRecipe();
+                      }
+                    }}
+                  />
+                  <button type="button" onClick={handleParseRecipe} disabled={!recipeUrl || isParsing} className="landing-submit-btn">
+                    {isParsing ? <span className="spinner" aria-hidden="true" /> : 'Start Cooking'}
+                  </button>
+                </div>
+                {isParsing && <p className="hint">Preparing your cooking session…</p>}
+              </div>
+            </div>
           </div>
         </main>
       ) : (
         <main className="cooking">
           <div className="content">
+            <IngredientsPanel
+              ingredients={recipe.ingredients}
+            />
             <StepCard
               key={session.currentStepIndex}
               phaseLabel={phaseLabel}
@@ -250,14 +343,16 @@ export default function App() {
           </div>
           <VoiceConsole
             voiceState={effectiveVoiceState}
-            transcript={transcript}
-            isVoiceSupported={isVoiceSupported}
-            onRetry={handleRetryVoice}
-          />
-          <IngredientsPanel
-            isOpen={isIngredientsOpen}
-            onToggle={() => setIsIngredientsOpen((open) => !open)}
-            ingredients={recipe.ingredients}
+            transcript={null}
+            isVoiceSupported={true}
+            onRetry={() =>
+              conversation.startSession({
+                agentId: selectedAgentId,
+              })
+            }
+            onStopSession={() => conversation.endSession()}
+            onToggleMute={() => setIsMuted((m) => !m)}
+            isMuted={isMuted}
           />
         </main>
       )}

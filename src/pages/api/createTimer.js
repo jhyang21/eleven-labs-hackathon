@@ -10,9 +10,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { durationSeconds, session } = req.body;
+    const { durationSeconds, label, session } = req.body;
     
     console.log('Received durationSeconds:', durationSeconds);
+    console.log('Received label:', label);
     console.log('Received session:', session);
     
     if (!durationSeconds || typeof durationSeconds !== 'number' || durationSeconds <= 0) {
@@ -27,7 +28,7 @@ export default async function handler(req, res) {
       id: randomUUID(),
       durationSeconds,
       endTime,
-      label: `Timer (${Math.round(durationSeconds / 60)} min)`,
+      label: label || `Timer (${Math.round(durationSeconds / 60)} min)`,
     };
 
     console.log('Created timer:', newTimer);

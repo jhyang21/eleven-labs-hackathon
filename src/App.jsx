@@ -21,9 +21,28 @@ const defaultRecipe = {
   steps: [],
 };
 
+// Personality/Agent configurations
+const DEFAULT_AGENT_ID = process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID || '';
+
+const PERSONALITIES = [
+  { id: DEFAULT_AGENT_ID || 'default', name: 'Default', description: 'Standard cooking assistant' },
+  { id: 'agent-id-2', name: '2', description: 'Personality option 2' },
+  { id: 'agent-id-3', name: '3', description: 'Personality option 3' },
+  { id: 'agent-id-4', name: '4', description: 'Personality option 4' },
+  { id: 'agent-id-5', name: '5', description: 'Personality option 5' },
+];
+
 export default function App() {
   const [recipeUrl, setRecipeUrl] = useState('');
   const [recipe, setRecipe] = useState(defaultRecipe);
+  const [selectedAgentId, setSelectedAgentId] = useState(() => {
+    // Load from localStorage if available, otherwise use default
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('selectedAgentId');
+      return saved || DEFAULT_AGENT_ID || PERSONALITIES[0]?.id || '';
+    }
+    return DEFAULT_AGENT_ID || PERSONALITIES[0]?.id || '';
+  });
   const [session, setSession] = useState({
     currentStepIndex: 0,
     activeTimers: [],
@@ -139,6 +158,11 @@ export default function App() {
   }, [session]);
 
 
+  const handleAgentChange = (agentId) => {
+    setSelectedAgentId(agentId);
+    localStorage.setItem('selectedAgentId', agentId);
+  };
+
   const handleParseRecipe = async () => {
     setError('');
     setStatus('Parsing recipe...');
@@ -160,7 +184,7 @@ export default function App() {
       if (parsed.steps.length > 0) {
         try {
           await conversation.startSession({
-            agentId: process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID,
+            agentId: selectedAgentId,
           });
         } catch (sessionError) {
           console.error('Failed to start conversation session:', sessionError);
@@ -256,6 +280,27 @@ export default function App() {
                   <p className="landing-card-subtitle">Enter your recipe URL to begin</p>
                 </div>
                 <div className="landing-input-group">
+                  <div className="personality-selector-group">
+                    <label htmlFor="personality-select" className="personality-label">AI Personality</label>
+                    <select
+                      id="personality-select"
+                      className="personality-select"
+                      value={selectedAgentId}
+                      onChange={(e) => handleAgentChange(e.target.value)}
+                      disabled={isParsing}
+                    >
+                      {PERSONALITIES.map((personality) => (
+                        <option key={personality.id} value={personality.id}>
+                          {personality.name}
+                        </option>
+                      ))}
+                    </select>
+                    {PERSONALITIES.find(p => p.id === selectedAgentId)?.description && (
+                      <p className="personality-description">
+                        {PERSONALITIES.find(p => p.id === selectedAgentId).description}
+                      </p>
+                    )}
+                  </div>
                   <input
                     type="url"
                     placeholder="https://example.com/recipe..."
@@ -324,7 +369,7 @@ export default function App() {
             isVoiceSupported={true}
             onRetry={() =>
               conversation.startSession({
-                agentId: process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID,
+                agentId: selectedAgentId,
               })
             }
           />

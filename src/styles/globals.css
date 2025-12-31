@@ -173,6 +173,7 @@ button:disabled {
   justify-content: center;
   flex-wrap: wrap;
   gap: 24px;
+  margin-top: 48px;
 }
 
 .timer-ring {
@@ -224,7 +225,7 @@ button:disabled {
 .voice-console {
   position: fixed;
   left: 50%;
-  bottom: 24px;
+  bottom: 100px;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
@@ -271,6 +272,43 @@ button:disabled {
   font-size: 18px;
 }
 
+.voice-controls {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%);
+  margin-bottom: 12px;
+  display: flex;
+  gap: 8px;
+  background: #ffffff;
+  padding: 8px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  white-space: nowrap;
+}
+
+.voice-control-btn {
+  height: 36px;
+  padding: 0 12px;
+  font-size: 14px;
+  border-radius: 8px;
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.voice-control-btn:hover {
+  background: #e5e7eb;
+}
+
+.voice-control-btn.stop-btn {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.voice-control-btn.stop-btn:hover {
+  background: #fecaca;
+}
+
 .voice-error {
   text-align: center;
   background: #ffffff;
@@ -290,45 +328,28 @@ button:disabled {
 }
 
 .ingredients-panel {
-  position: fixed;
-  left: 50%;
-  bottom: 0;
-  transform: translate(-50%, calc(100% - 52px));
-  width: min(720px, 100%);
+  width: 100%;
   background: #ffffff;
-  border-radius: 16px 16px 0 0;
-  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06);
-  transition: transform 150ms ease-out;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
 }
 
-.ingredients-panel.open {
-  transform: translate(-50%, 0);
-}
-
-.ingredients-toggle {
+.ingredients-header {
   width: 100%;
   height: 52px;
-  background: none;
   color: #1f2937;
   font-size: 16px;
   font-weight: 500;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 0 24px;
-}
-
-.ingredients-toggle:hover {
-  background: #f9fafb;
-}
-
-.ingredients-caret {
-  font-size: 20px;
-  color: #6b7280;
+  border-bottom: 1px solid #f3f4f6;
 }
 
 .ingredients-content {
-  padding: 8px 24px 24px;
+  padding: 24px;
 }
 
 .ingredients-content ul {

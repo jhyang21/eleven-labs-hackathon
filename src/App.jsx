@@ -35,6 +35,7 @@ export default function App() {
   const [isParsing, setIsParsing] = useState(false);
   const [readyPromptVisible, setReadyPromptVisible] = useState(false);
   const [flashingTimerId, setFlashingTimerId] = useState(null);
+  const [isMuted, setIsMuted] = useState(false);
   
   const sessionRef = useRef(session);
   const recipeRef = useRef(recipe);
@@ -45,6 +46,7 @@ export default function App() {
   }, [session, recipe]);
 
   const conversation = useConversation({
+    micMuted: isMuted,
     clientTools: {
       startCookingSession: async () => {
         const r = recipeRef.current;
@@ -99,7 +101,6 @@ export default function App() {
     },
   });
 
-  const [isIngredientsOpen, setIsIngredientsOpen] = useState(false);
   const { status: conversationStatus, isSpeaking } = conversation;
 
 
@@ -260,6 +261,9 @@ export default function App() {
       ) : (
         <main className="cooking">
           <div className="content">
+            <IngredientsPanel
+              ingredients={recipe.ingredients}
+            />
             <StepCard
               key={session.currentStepIndex}
               phaseLabel={phaseLabel}
@@ -277,11 +281,9 @@ export default function App() {
                 agentId: process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID,
               })
             }
-          />
-          <IngredientsPanel
-            isOpen={isIngredientsOpen}
-            onToggle={() => setIsIngredientsOpen((open) => !open)}
-            ingredients={recipe.ingredients}
+            onStopSession={() => conversation.endSession()}
+            onToggleMute={() => setIsMuted((m) => !m)}
+            isMuted={isMuted}
           />
         </main>
       )}

@@ -57,14 +57,16 @@ export const parseRecipeFromUrl = async (url) => {
 
   try {
     const parsedUrl = new URL(url);
-    if (!parsedUrl.hostname.endsWith('allrecipes.com')) {
-      throw new Error('Only allrecipes.com URLs are supported.');
+    // Check that it's specifically an AllRecipes link
+    const hostname = parsedUrl.hostname.toLowerCase();
+    if (!hostname.includes('allrecipes.com')) {
+      throw new Error('Invalid URL. Please provide a valid AllRecipes.com recipe link (e.g., https://www.allrecipes.com/recipe/...).');
     }
   } catch (error) {
-    if (error.message.includes('Only allrecipes.com')) {
+    if (error.message.includes('Invalid URL') || error.message.includes('AllRecipes')) {
       throw error;
     }
-    throw new Error('Invalid URL provided.');
+    throw new Error('Invalid URL provided. Please ensure you are using a valid AllRecipes.com recipe link.');
   }
 
   const functionUrl = '/api/parseRecipe';

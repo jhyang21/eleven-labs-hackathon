@@ -3,51 +3,41 @@ import * as cheerio from 'cheerio';
 const normalizeText = (text) => text.replace(/\s+/g, ' ').trim();
 
 export default async function handler(req, res) {
-  console.log('API parseRecipe called with method:', req.method);
   if (req.method !== 'POST') {
-    console.log('Method not allowed');
     res.status(405).json({ error: 'Method not allowed' });
     return;
   }
 
   try {
     const { url } = req.body;
-    console.log('Received URL:', url);
     if (!url) {
-      console.log('Missing URL in body');
       res.status(400).json({ error: 'Missing URL' });
       return;
     }
 
-    // Validate domain
+    // Validate that it's an AllRecipes link
     try {
       const parsedUrl = new URL(url);
-      console.log('Parsed hostname:', parsedUrl.hostname);
-      if (!parsedUrl.hostname.endsWith('allrecipes.com')) {
-        console.log('Invalid domain:', parsedUrl.hostname);
-        res.status(400).json({ error: 'Only allrecipes.com URLs are supported.' });
+      const hostname = parsedUrl.hostname.toLowerCase();
+      if (!hostname.includes('allrecipes.com')) {
+        res.status(400).json({ error: 'Invalid URL. Please provide a valid AllRecipes.com recipe link (e.g., https://www.allrecipes.com/recipe/...).' });
         return;
       }
     } catch (e) {
       console.error('URL parsing error:', e);
-      res.status(400).json({ error: 'Invalid URL provided.' });
+      res.status(400).json({ error: 'Invalid URL provided. Please ensure you are using a valid AllRecipes.com recipe link.' });
       return;
     }
 
-    console.log('Fetching URL...');
     const fetched = await fetch(url);
-    console.log('Fetch status:', fetched.status);
     if (!fetched.ok) {
-      console.log('Failed to fetch URL');
       res.status(400).json({ error: 'Failed to fetch recipe URL' });
       return;
     }
     const html = await fetched.text();
-    console.log('Fetched HTML length:', html.length);
     const $ = cheerio.load(html);
 
     const title = normalizeText($('#article-heading_1-0').text() || $('h1').text()) || 'Parsed recipe';
-    console.log('Parsed title:', title);
 
     const ingredients = [];
     // Try multiple selectors for ingredients
@@ -66,7 +56,6 @@ export default async function handler(req, res) {
         if (text) ingredients.push(text);
       });
     }
-    console.log(`Parsed ${ingredients.length} ingredients`);
 
     const steps = [];
     // Try multiple selectors for steps
@@ -85,10 +74,8 @@ export default async function handler(req, res) {
         if (text) steps.push(text);
       });
     }
-    console.log(`Parsed ${steps.length} steps`);
 
     if (ingredients.length === 0 || steps.length === 0) {
-      console.log('Parsing failed: ingredients or steps empty');
       res.status(422).json({ error: 'Unable to parse recipe content. Make sure it is a valid AllRecipes page.' });
       return;
     }

@@ -244,17 +244,50 @@ export default function App() {
         </main>
       ) : !hasRecipe ? (
         <main className="landing">
-          <div className="landing-card">
-            <input
-              type="url"
-              placeholder="Paste a recipe link"
-              value={recipeUrl}
-              onChange={(event) => setRecipeUrl(event.target.value)}
-            />
-            <button type="button" onClick={handleParseRecipe} disabled={!recipeUrl || isParsing}>
-              {isParsing ? <span className="spinner" aria-hidden="true" /> : 'Start cooking'}
-            </button>
-            {isParsing && <p className="hint">Preparing your cooking session…</p>}
+          <div className="landing-container">
+            <div className="landing-hero">
+              <h1 className="landing-title">Voice AI Cooking Assistant</h1>
+              <p className="landing-subtitle">Hands-free recipe guidance powered by ElevenLabs</p>
+              <p className="landing-description">
+                Get step-by-step cooking instructions through voice interaction. 
+                Simply paste a recipe URL and let our AI assistant guide you through your culinary journey.
+              </p>
+            </div>
+            <div className="landing-card">
+              <h2 className="landing-card-title">Get Started</h2>
+              <input
+                type="url"
+                placeholder="Paste a recipe URL here..."
+                value={recipeUrl}
+                onChange={(event) => setRecipeUrl(event.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && recipeUrl && !isParsing) {
+                    handleParseRecipe();
+                  }
+                }}
+              />
+              <button type="button" onClick={handleParseRecipe} disabled={!recipeUrl || isParsing}>
+                {isParsing ? <span className="spinner" aria-hidden="true" /> : 'Start Cooking'}
+              </button>
+              {isParsing && <p className="hint">Preparing your cooking session…</p>}
+            </div>
+            <div className="landing-features">
+              <div className="feature-item">
+                <div className="feature-icon">🎙️</div>
+                <h3>Voice Commands</h3>
+                <p>Interact hands-free while you cook</p>
+              </div>
+              <div className="feature-item">
+                <div className="feature-icon">⏱️</div>
+                <h3>Smart Timers</h3>
+                <p>Automatic timer management</p>
+              </div>
+              <div className="feature-item">
+                <div className="feature-icon">📝</div>
+                <h3>Step Guidance</h3>
+                <p>Clear, easy-to-follow instructions</p>
+              </div>
+            </div>
           </div>
         </main>
       ) : (

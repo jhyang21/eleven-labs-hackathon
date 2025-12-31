@@ -171,6 +171,8 @@ button:disabled {
 .timer-panel {
   display: flex;
   justify-content: center;
+  flex-wrap: wrap;
+  gap: 24px;
 }
 
 .timer-ring {

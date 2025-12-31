@@ -58,7 +58,11 @@ export default async function handler(req, res) {
     for (const selector of ingredientSelectors) {
       if (ingredients.length > 0) break;
       $(selector).each((_, el) => {
-        const text = normalizeText($(el).text());
+        let text = normalizeText($(el).text());
+        const cutIndex = text.indexOf('<');
+        if (cutIndex !== -1) {
+          text = text.substring(0, cutIndex).trim();
+        }
         if (text) ingredients.push(text);
       });
     }
@@ -73,7 +77,11 @@ export default async function handler(req, res) {
     for (const selector of stepSelectors) {
       if (steps.length > 0) break;
       $(selector).each((_, el) => {
-        const text = normalizeText($(el).text());
+        let text = normalizeText($(el).text());
+        const cutIndex = text.indexOf('<');
+        if (cutIndex !== -1) {
+          text = text.substring(0, cutIndex).trim();
+        }
         if (text) steps.push(text);
       });
     }

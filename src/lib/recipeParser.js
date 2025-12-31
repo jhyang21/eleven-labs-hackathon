@@ -57,7 +57,7 @@ export const parseRecipeFromUrl = async (url) => {
 
   try {
     const parsedUrl = new URL(url);
-    if (!parsedUrl.hostname.includes('allrecipes.com')) {
+    if (!parsedUrl.hostname.endsWith('allrecipes.com')) {
       throw new Error('Only allrecipes.com URLs are supported.');
     }
   } catch (error) {

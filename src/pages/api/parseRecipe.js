@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     try {
       const parsedUrl = new URL(url);
       console.log('Parsed hostname:', parsedUrl.hostname);
-      if (!parsedUrl.hostname.includes('allrecipes.com')) {
+      if (!parsedUrl.hostname.endsWith('allrecipes.com')) {
         console.log('Invalid domain:', parsedUrl.hostname);
         res.status(400).json({ error: 'Only allrecipes.com URLs are supported.' });
         return;

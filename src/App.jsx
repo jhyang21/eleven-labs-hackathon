@@ -22,27 +22,33 @@ const defaultRecipe = {
 };
 
 // Personality/Agent configurations
-const DEFAULT_AGENT_ID = process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID || '';
-
 const PERSONALITIES = [
-  { id: DEFAULT_AGENT_ID || 'default', name: 'Default', description: 'Standard cooking assistant' },
-  { id: 'agent-id-2', name: '2', description: 'Personality option 2' },
-  { id: 'agent-id-3', name: '3', description: 'Personality option 3' },
-  { id: 'agent-id-4', name: '4', description: 'Personality option 4' },
-  { id: 'agent-id-5', name: '5', description: 'Personality option 5' },
-];
+  { 
+    id: process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID_GRANDMA, 
+    name: 'Grandma', 
+    description: 'Sweet and encouraging, like cooking with grandma' 
+  },
+  { 
+    id: process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID_CHEF, 
+    name: 'Professional Chef', 
+    description: 'Strict and precise culinary expert' 
+  },
+  { 
+    id: process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID_YOGA, 
+    name: 'Yoga Instructor', 
+    description: 'Mindful and zen cooking experience' 
+  },
+  { 
+    id: process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID_SCIENTIST, 
+    name: 'Scientist', 
+    description: 'Analytical and detail-oriented approach' 
+  },
+].filter(p => p.id); // Only show personalities with configured IDs
 
 export default function App() {
   const [recipeUrl, setRecipeUrl] = useState('');
   const [recipe, setRecipe] = useState(defaultRecipe);
-  const [selectedAgentId, setSelectedAgentId] = useState(() => {
-    // Load from localStorage if available, otherwise use default
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('selectedAgentId');
-      return saved || DEFAULT_AGENT_ID || PERSONALITIES[0]?.id || '';
-    }
-    return DEFAULT_AGENT_ID || PERSONALITIES[0]?.id || '';
-  });
+  const [selectedAgentId, setSelectedAgentId] = useState(PERSONALITIES[0]?.id || '');
   const [session, setSession] = useState({
     currentStepIndex: 0,
     activeTimers: [],
@@ -161,7 +167,6 @@ export default function App() {
 
   const handleAgentChange = (agentId) => {
     setSelectedAgentId(agentId);
-    localStorage.setItem('selectedAgentId', agentId);
   };
 
   const handleParseRecipe = async () => {
@@ -261,7 +266,7 @@ export default function App() {
         <main className="error-screen">
           <div className="error-card">
             <h1>We couldn’t read this recipe</h1>
-            <p>Try another link or a different site</p>
+            <p>Please use a valid AllRecipes.com URL</p>
             <button type="button" onClick={handleResetError}>
               Try again
             </button>
@@ -282,7 +287,7 @@ export default function App() {
                 </div>
                 <div className="landing-input-group">
                   <div className="personality-selector-group">
-                    <label htmlFor="personality-select" className="personality-label">AI Personality</label>
+                    <label htmlFor="personality-select" className="personality-label">Choose Personality</label>
                     <select
                       id="personality-select"
                       className="personality-select"
@@ -304,7 +309,7 @@ export default function App() {
                   </div>
                   <input
                     type="url"
-                    placeholder="https://example.com/recipe..."
+                    placeholder="https://www.allrecipes.com/recipe/..."
                     value={recipeUrl}
                     onChange={(event) => setRecipeUrl(event.target.value)}
                     onKeyDown={(e) => {
@@ -318,37 +323,6 @@ export default function App() {
                   </button>
                 </div>
                 {isParsing && <p className="hint">Preparing your cooking session…</p>}
-              </div>
-            </div>
-            <div className="landing-sidebar">
-              <div className="landing-features">
-                <div className="feature-item">
-                  <div className="feature-icon-wrapper">
-                    <div className="feature-icon">🎙️</div>
-                  </div>
-                  <div className="feature-content">
-                    <h3>Voice Commands</h3>
-                    <p>Interact hands-free while you cook</p>
-                  </div>
-                </div>
-                <div className="feature-item">
-                  <div className="feature-icon-wrapper">
-                    <div className="feature-icon">⏱️</div>
-                  </div>
-                  <div className="feature-content">
-                    <h3>Smart Timers</h3>
-                    <p>Automatic timer management</p>
-                  </div>
-                </div>
-                <div className="feature-item">
-                  <div className="feature-icon-wrapper">
-                    <div className="feature-icon">📝</div>
-                  </div>
-                  <div className="feature-content">
-                    <h3>Step Guidance</h3>
-                    <p>Clear, easy-to-follow instructions</p>
-                  </div>
-                </div>
               </div>
             </div>
           </div>

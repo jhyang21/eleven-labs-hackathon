@@ -1,10 +1,7 @@
 import { randomUUID } from 'crypto';
 
 export default async function handler(req, res) {
-  console.log('API createTimer called with method:', req.method);
-  
   if (req.method !== 'POST') {
-    console.log('Method not allowed');
     res.status(405).json({ error: 'Method not allowed' });
     return;
   }
@@ -12,12 +9,7 @@ export default async function handler(req, res) {
   try {
     const { durationSeconds, label, session } = req.body;
     
-    console.log('Received durationSeconds:', durationSeconds);
-    console.log('Received label:', label);
-    console.log('Received session:', session);
-    
     if (!durationSeconds || typeof durationSeconds !== 'number' || durationSeconds <= 0) {
-      console.log('Invalid durationSeconds');
       res.status(400).json({ error: 'Invalid durationSeconds. Must be a positive number.' });
       return;
     }
@@ -31,8 +23,6 @@ export default async function handler(req, res) {
       label: label || `Timer (${Math.round(durationSeconds / 60)} min)`,
     };
 
-    console.log('Created timer:', newTimer);
-
     // Update session state if provided
     let updatedSession = null;
     if (session) {
@@ -40,7 +30,6 @@ export default async function handler(req, res) {
         ...session,
         activeTimers: [...(session.activeTimers || []), newTimer],
       };
-      console.log('Updated session with new timer');
     }
 
     // Return the timer and updated session

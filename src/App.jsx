@@ -174,6 +174,21 @@ export default function App() {
     setStatus('Parsing recipe...');
     setIsParsing(true);
     try {
+      // Validate that it's an AllRecipes link before parsing
+      if (recipeUrl) {
+        try {
+          const parsedUrl = new URL(recipeUrl);
+          const hostname = parsedUrl.hostname.toLowerCase();
+          if (!hostname.includes('allrecipes.com')) {
+            throw new Error('Invalid URL. Please provide a valid AllRecipes.com recipe link (e.g., https://www.allrecipes.com/...).');
+          }
+        } catch (urlError) {
+          if (urlError.message.includes('Invalid URL') || urlError.message.includes('AllRecipes')) {
+            throw urlError;
+          }
+          throw new Error('Invalid URL format. Please ensure you are using a valid AllRecipes.com recipe link.');
+        }
+      }
       const parsed = await parseRecipeFromUrl(recipeUrl);
       setRecipe(parsed);
       setSession((prev) => ({
@@ -265,8 +280,8 @@ export default function App() {
       {error ? (
         <main className="error-screen">
           <div className="error-card">
-            <h1>We couldn’t read this recipe</h1>
-            <p>Please use a valid AllRecipes.com URL</p>
+            <h1>We couldn't read this recipe</h1>
+            <p>Please provide a valid AllRecipes.com recipe link (e.g., https://www.allrecipes.com/...)</p>
             <button type="button" onClick={handleResetError}>
               Try again
             </button>
@@ -277,8 +292,8 @@ export default function App() {
           <div className="landing-container">
             <div className="landing-content">
               <div className="landing-hero">
-                <h1 className="landing-title">Voice AI Cooking Assistant</h1>
-                <p className="landing-subtitle">Hands-free recipe guidance powered by ElevenLabs</p>
+                <h1 className="landing-title">Sous AI</h1>
+                <p className="landing-subtitle">Hands-free recipe guidance powered with ElevenLabs</p>
               </div>
               <div className="landing-card">
                 <div className="landing-card-header">
@@ -309,7 +324,7 @@ export default function App() {
                   </div>
                   <input
                     type="url"
-                    placeholder="https://www.allrecipes.com/recipe/..."
+                    placeholder="https://www.allrecipes.com/..."
                     value={recipeUrl}
                     onChange={(event) => setRecipeUrl(event.target.value)}
                     onKeyDown={(e) => {
